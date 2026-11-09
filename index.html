@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14202b">
+<meta name="robots" content="noindex">
+<title>Meeting Recorder</title>
+<style>
+  :root { --bg:#14202b; --card:#1e2e3d; --ink:#eef3f7; --dim:#9fb2c3; --accent:#3fa7ff; --rec:#e5484d; --ok:#2fb67c; --warn:#f0b429; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.4 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
+  header h1 { font-size:18px; margin:0; }
+  nav { display:flex; gap:6px; padding:0 12px; }
+  nav button { flex:1; padding:10px; border:0; border-radius:10px; background:var(--card); color:var(--dim); font-size:15px; }
+  nav button.on { background:var(--accent); color:#fff; }
+  main { padding:12px; max-width:640px; margin:0 auto; }
+  .card { background:var(--card); border-radius:14px; padding:14px; margin-bottom:12px; }
+  label { display:block; font-size:13px; color:var(--dim); margin:10px 0 4px; }
+  input, textarea, select { width:100%; padding:10px; border-radius:8px; border:1px solid #33495d; background:#13202c; color:var(--ink); font-size:16px; }
+  textarea { min-height:60px; }
+  .btn { display:inline-block; padding:12px 16px; border:0; border-radius:10px; background:var(--accent); color:#fff; font-size:16px; font-weight:600; }
+  .btn.grey { background:#3a4f63; } .btn.red { background:var(--rec); } .btn.green { background:var(--ok); }
+  .btn:disabled { opacity:.5; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  #recBtn { width:150px; height:150px; border-radius:50%; border:6px solid #33495d; background:var(--rec); color:#fff; font-size:20px; font-weight:700; display:block; margin:10px auto; }
+  #recBtn.live { animation:pulse 1.4s infinite; }
+  @keyframes pulse { 50% { box-shadow:0 0 0 14px rgba(229,72,77,.25); } }
+  #timer { text-align:center; font-size:34px; font-variant-numeric:tabular-nums; }
+  #meter { height:8px; background:#13202c; border-radius:4px; overflow:hidden; margin:8px 0; }
+  #meter div { height:100%; width:0; background:var(--ok); transition:width .1s; }
+  .msg { padding:10px; border-radius:8px; margin-top:10px; font-size:14px; white-space:pre-wrap; }
+  .msg.ok { background:rgba(47,182,124,.18); } .msg.err { background:rgba(229,72,77,.2); } .msg.info { background:rgba(63,167,255,.15); }
+  .hint { font-size:13px; color:var(--dim); }
+  .note { padding:12px; border-bottom:1px solid #2b3f52; cursor:pointer; }
+  .note:last-child { border-bottom:0; }
+  .note b { display:block; } .note small { color:var(--dim); }
+  .badge { display:inline-block; font-size:11px; padding:2px 6px; border-radius:6px; background:var(--warn); color:#222; margin-left:6px; }
+  .sample { font-size:13px; color:var(--dim); margin:2px 0 6px; font-style:italic; }
+  .summary { white-space:pre-wrap; font-size:14px; }
+  .hidden { display:none !important; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎙️ Meeting Recorder</h1>
+  <button class="btn grey" id="gear" style="padding:6px 10px">⚙️ Setup</button>
+</header>
+<nav>
+  <button id="tabRec" class="on">Record</button>
+  <button id="tabNotes">Notes</button>
+</nav>
+<main>
+
+<!-- SETUP -->
+<section id="setup" class="hidden">
+  <div class="card">
+    <h3 style="margin-top:0">Setup (this phone only)</h3>
+    <p class="hint">These are saved only in this phone's browser. They are never put in the code or sent anywhere except GitHub.</p>
+    <label>GitHub user name (owner of the notes repo)</label>
+    <input id="cfgOwner" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label>Private notes repo name</label>
+    <input id="cfgRepo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="meeting-notes">
+    <label>Upload token (fine-grained, this repo only, Contents: read and write)</label>
+    <input id="cfgToken" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="github_pat_...">
+    <p class="hint">Leave the token box empty to keep the one already saved.</p>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="cfgSave">Save and test</button>
+      <button class="btn grey" id="cfgForget">Forget token</button>
+    </div>
+    <div id="cfgMsg"></div>
+  </div>
+</section>
+
+<!-- RECORD -->
+<section id="rec">
+  <div class="card">
+    <p class="hint" style="margin-top:0">⚖️ Tell everyone they are being recorded before you start.</p>
+    <div id="timer">00:00</div>
+    <div id="meter"><div></div></div>
+    <button id="recBtn">Record</button>
+    <div class="row" style="justify-content:center">
+      <button class="btn grey hidden" id="pauseBtn">Pause</button>
+      <button class="btn hidden" id="stopBtn">Stop</button>
+    </div>
+    <p class="hint" style="text-align:center">Keep this screen on while recording. Locking the phone can stop the mic.</p>
+  </div>
+
+  <div class="card">
+    <label>Title</label>
+    <input id="mTitle" placeholder="e.g. Weekly site meeting">
+    <label>Topic</label>
+    <input id="mTopic" placeholder="e.g. Tool install schedule">
+    <label>Who's there (comma separated)</label>
+    <input id="mPeople" placeholder="e.g. Glenn, Eric">
+    <label>Tags (comma separated)</label>
+    <input id="mTags" placeholder="e.g. micron, schedule">
+    <label>How many people will talk? (optional, helps speaker labels)</label>
+    <input id="mCount" type="number" min="0" max="20" placeholder="leave blank if unsure">
+  </div>
+
+  <div class="card hidden" id="review">
+    <b>Recording ready</b>
+    <audio id="player" controls style="width:100%;margin-top:8px"></audio>
+    <div class="row" style="margin-top:10px">
+      <button class="btn green" id="uploadBtn">Upload</button>
+      <a class="btn grey" id="saveLink" download>Save copy to phone</a>
+      <button class="btn red" id="discardBtn">Discard</button>
+    </div>
+    <div id="upMsg"></div>
+  </div>
+
+  <div class="card">
+    <b>Already have a recording?</b>
+    <p class="hint">Pick an audio file (voice memo, etc.) and upload it the same way.</p>
+    <input type="file" id="filePick" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg">
+  </div>
+</section>
+
+<!-- NOTES -->
+<section id="notes" class="hidden">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <b>Your meetings</b>
+      <button class="btn grey" id="refreshBtn" style="padding:6px 10px">↻ Refresh</button>
+    </div>
+    <div id="pending"></div>
+    <div id="noteList"><p class="hint">Loading…</p></div>
+  </div>
+  <div class="card hidden" id="noteView">
+    <button class="btn grey" id="backBtn" style="padding:6px 10px">← Back</button>
+    <h3 id="nvTitle"></h3>
+    <div class="hint" id="nvFacts"></div>
+    <h4>Summary</h4>
+    <div class="summary" id="nvSummary"></div>
+    <h4>Name the speakers</h4>
+    <p class="hint">Each label shows what that speaker said first. Type their real name.</p>
+    <div id="nvSpeakers"></div>
+    <label>Title</label><input id="nvTitleIn">
+    <label>Topic</label><input id="nvTopic">
+    <label>Tags (comma separated)</label><input id="nvTags">
+    <label>Other people there (comma separated)</label><input id="nvPeople">
+    <div class="row" style="margin-top:12px">
+      <button class="btn green" id="nvSave">Save</button>
+      <a class="btn grey" id="nvOpen" target="_blank" rel="noopener">Open on GitHub</a>
+    </div>
+    <div id="nvMsg"></div>
+  </div>
+</section>
+</main>
+
+<script>
+"use strict";
+// ---------- settings (stored in this browser only) ----------
+const LS = { owner:"mn.owner", repo:"mn.repo", token:"mn.token" };
+const cfg = () => ({ owner:localStorage.getItem(LS.owner)||"", repo:localStorage.getItem(LS.repo)||"", token:localStorage.getItem(LS.token)||"" });
+const $ = id => document.getElementById(id);
+const show = (el, on) => el.classList.toggle("hidden", !on);
+function msg(el, text, kind) { el.innerHTML = ""; if (!text) return; const d = document.createElement("div"); d.className = "msg " + (kind||"info"); d.textContent = text; el.appendChild(d); }
+const ready = () => { const c = cfg(); return c.owner && c.repo && c.token; };
+
+// ---------- GitHub API ----------
+async function gh(path, opts = {}) {
+  const c = cfg();
+  const url = path.startsWith("http") ? path : `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}${path}`;
+  const res = await fetch(url, { cache:"no-store", ...opts, headers:{ "Authorization":"Bearer " + c.token, "Accept": opts.raw ? "application/vnd.github.raw+json" : "application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28", ...(opts.body ? {"Content-Type":"application/json"} : {}) } });
+  if (!res.ok) { let t = ""; try { t = (await res.json()).message; } catch (e) {} const err = new Error(`GitHub ${res.status}: ${t || res.statusText}`); err.status = res.status; throw err; }
+  if (res.status === 204) return null;
+  return opts.raw ? res.text() : res.json();
+}
+function b64FromBytes(bytes) { let s = ""; const CH = 0x8000; for (let i = 0; i < bytes.length; i += CH) s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH)); return btoa(s); }
+const b64FromText = t => b64FromBytes(new TextEncoder().encode(t));
+const textFromB64 = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\n/g, "")), c => c.charCodeAt(0)));
+async function b64FromBlob(blob) { return b64FromBytes(new Uint8Array(await blob.arrayBuffer())); }
+
+// One commit containing several files (audio + its info file), so the workflow sees them together.
+async function commitFiles(files, message, onStep) {
+  const repo = await gh("");
+  const branch = repo.default_branch;
+  const blobs = [];
+  for (const f of files) {
+    onStep && onStep(`Uploading ${f.path.split("/").pop()}…`);
+    const b = await gh("/git/blobs", { method:"POST", body:JSON.stringify({ content:f.b64, encoding:"base64" }) });
+    blobs.push({ path:f.path, mode:"100644", type:"blob", sha:b.sha });
+  }
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    onStep && onStep("Saving to repo…");
+    const ref = await gh(`/git/ref/heads/${encodeURIComponent(branch)}`);
+    const head = await gh(`/git/commits/${ref.object.sha}`);
+    const tree = await gh("/git/trees", { method:"POST", body:JSON.stringify({ base_tree:head.tree.sha, tree:blobs }) });
+    const commit = await gh("/git/commits", { method:"POST", body:JSON.stringify({ message, tree:tree.sha, parents:[ref.object.sha] }) });
+    try { await gh(`/git/refs/heads/${encodeURIComponent(branch)}`, { method:"PATCH", body:JSON.stringify({ sha:commit.sha }) }); return commit; }
+    catch (e) { if (e.status !== 422 || attempt === 4) throw e; await new Promise(r => setTimeout(r, 1500 * attempt)); }
+  }
+}
+
+// ---------- tabs ----------
+function tab(name) {
+  show($("rec"), name === "rec"); show($("notes"), name === "notes"); show($("setup"), name === "setup");
+  $("tabRec").classList.toggle("on", name === "rec"); $("tabNotes").classList.toggle("on", name === "notes");
+  if (name === "notes") loadNotes();
+}
+$("tabRec").onclick = () => tab("rec");
+$("tabNotes").onclick = () => tab("notes");
+$("gear").onclick = () => { const c = cfg(); $("cfgOwner").value = c.owner; $("cfgRepo").value = c.repo || "meeting-notes"; $("cfgToken").value = ""; tab("setup"); };
+
+$("cfgSave").onclick = async () => {
+  localStorage.setItem(LS.owner, $("cfgOwner").value.trim());
+  localStorage.setItem(LS.repo, $("cfgRepo").value.trim());
+  const t = $("cfgToken").value.trim(); if (t) localStorage.setItem(LS.token, t);
+  $("cfgToken").value = "";
+  if (!ready()) return msg($("cfgMsg"), "Fill in all three boxes.", "err");
+  msg($("cfgMsg"), "Testing…");
+  try {
+    const r = await gh("");
+    if (!r.private) return msg($("cfgMsg"), "Connected, but this repo is PUBLIC. Your notes would be visible to anyone. Make it private on GitHub first.", "err");
+    if (r.permissions && !r.permissions.push) return msg($("cfgMsg"), "Connected, but the token can't write. Give it Contents: Read and write.", "err");
+    msg($("cfgMsg"), `✅ Connected to private repo ${r.full_name}.`, "ok");
+  } catch (e) { msg($("cfgMsg"), "❌ " + e.message + "\nCheck the names and that the token includes this repo.", "err"); }
+};
+$("cfgForget").onclick = () => { localStorage.removeItem(LS.token); msg($("cfgMsg"), "Token removed from this phone.", "ok"); };
+
+// ---------- recording ----------
+let rec = null, chunks = [], stream = null, startedAt = 0, elapsedBefore = 0, tick = null, wake = null, audioCtx = null, lastBlob = null, lastStart = null, lastExt = "webm";
+const fmt = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" : "") + String(m).padStart(2, "0") + ":" + String(x).padStart(2, "0"); };
+function pickType() {
+  const types = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"];
+  for (const t of types) if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t;
+  return "";
+}
+const extFor = type => /mp4|m4a|aac/.test(type) ? "m4a" : /ogg/.test(type) ? "ogg" : /mpeg|mp3/.test(type) ? "mp3" : /wav/.test(type) ? "wav" : "webm";
+function elapsed() { return elapsedBefore + (rec && rec.state === "recording" ? (Date.now() - startedAt) / 1000 : 0); }
+
+$("recBtn").onclick = async () => {
+  if (rec) return;
+  if (!window.MediaRecorder) return alert("This browser can't record audio. Use Chrome (Android) or Safari (iPhone).");
+  if (lastBlob && !confirm("Discard the recording that hasn't been uploaded?")) return;
+  resetReview();
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true } }); }
+  catch (e) { return alert("Microphone blocked: " + e.message + "\nAllow the mic for this site in your browser settings."); }
+  const type = pickType();
+  rec = new MediaRecorder(stream, type ? { mimeType:type, audioBitsPerSecond:32000 } : { audioBitsPerSecond:32000 });
+  chunks = []; elapsedBefore = 0; startedAt = Date.now(); lastStart = new Date();
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = finish;
+  rec.start(1000);
+  try { wake = await navigator.wakeLock.request("screen"); } catch (e) { wake = null; }
+  meter(stream);
+  $("recBtn").textContent = "Recording"; $("recBtn").classList.add("live");
+  show($("pauseBtn"), true); show($("stopBtn"), true); $("pauseBtn").textContent = "Pause";
+  tick = setInterval(() => { $("timer").textContent = fmt(elapsed()); }, 250);
+};
+$("pauseBtn").onclick = () => {
+  if (!rec) return;
+  if (rec.state === "recording") { elapsedBefore = elapsed(); rec.pause(); $("pauseBtn").textContent = "Resume"; $("recBtn").classList.remove("live"); $("recBtn").textContent = "Paused"; }
+  else if (rec.state === "paused") { startedAt = Date.now(); rec.resume(); $("pauseBtn").textContent = "Pause"; $("recBtn").classList.add("live"); $("recBtn").textContent = "Recording"; }
+};
+$("stopBtn").onclick = () => { if (rec && rec.state !== "inactive") { elapsedBefore = elapsed(); rec.stop(); } };
+function finish() {
+  clearInterval(tick);
+  stream && stream.getTracks().forEach(t => t.stop());
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  if (wake) { wake.release().catch(() => {}); wake = null; }
+  const type = rec.mimeType || (chunks[0] && chunks[0].type) || "audio/webm";
+  lastExt = extFor(type);
+  lastBlob = new Blob(chunks, { type });
+  rec = null; chunks = [];
+  $("recBtn").textContent = "Record"; $("recBtn").classList.remove("live");
+  show($("pauseBtn"), false); show($("stopBtn"), false);
+  showReview();
+}
+function meter(s) {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const an = audioCtx.createAnalyser(); an.fftSize = 512;
+    audioCtx.createMediaStreamSource(s).connect(an);
+    const buf = new Uint8Array(an.fftSize);
+    const draw = () => { if (!audioCtx) { $("meter").firstElementChild.style.width = "0"; return; }
+      an.getByteTimeDomainData(buf); let peak = 0; for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+      $("meter").firstElementChild.style.width = Math.min(100, peak / 64 * 100) + "%"; requestAnimationFrame(draw); };
+    draw();
+  } catch (e) {}
+}
+function showReview() {
+  const url = URL.createObjectURL(lastBlob);
+  $("player").src = url;
+  $("saveLink").href = url; $("saveLink").download = fileStem() + "." + lastExt;
+  msg($("upMsg"), `${(lastBlob.size / 1e6).toFixed(1)} MB, ${fmt(elapsedBefore)} long.`);
+  show($("review"), true); $("uploadBtn").disabled = false;
+  window.onbeforeunload = () => "You have a recording that isn't uploaded.";
+}
+function resetReview() { lastBlob = null; show($("review"), false); $("timer").textContent = "00:00"; msg($("upMsg"), ""); window.onbeforeunload = null; }
+$("discardBtn").onclick = () => { if (confirm("Delete this recording from the phone? It hasn't been uploaded.")) resetReview(); };
+
+$("filePick").onchange = () => {
+  const f = $("filePick").files[0]; if (!f) return;
+  if (lastBlob && !confirm("Replace the recording that hasn't been uploaded?")) return;
+  lastBlob = f; lastStart = new Date(f.lastModified || Date.now());
+  const m = /\.([a-z0-9]{2,4})$/i.exec(f.name); lastExt = m ? m[1].toLowerCase() : extFor(f.type);
+  if (!$("mTitle").value) $("mTitle").value = f.name.replace(/\.[^.]+$/, "");
+  elapsedBefore = 0; showReview(); $("filePick").value = "";
+};
+
+const pad = n => String(n).padStart(2, "0");
+const slug = s => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+function fileStem() {
+  const d = lastStart || new Date();
+  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  const s = slug($("mTitle").value);
+  return s ? `${stamp}_${s}` : stamp;
+}
+const list = s => (s || "").split(",").map(x => x.trim()).filter(Boolean);
+
+$("uploadBtn").onclick = async () => {
+  if (!lastBlob) return;
+  if (!ready()) { msg($("upMsg"), "Do Setup first (⚙️ at the top). Your recording is still here.", "err"); return; }
+  if (lastBlob.size > 95e6) { msg($("upMsg"), "Too big for one upload (over 95 MB). Save a copy to the phone instead.", "err"); return; }
+  $("uploadBtn").disabled = true;
+  const stem = fileStem();
+  const info = { title:$("mTitle").value.trim(), topic:$("mTopic").value.trim(), participants:list($("mPeople").value), tags:list($("mTags").value), speakers_expected:parseInt($("mCount").value, 10) || 0, recorded_at:(lastStart || new Date()).toISOString(), source:"recorder-page" };
+  try {
+    msg($("upMsg"), "Preparing…");
+    const audioB64 = await b64FromBlob(lastBlob);
+    await commitFiles([
+      { path:`inbox/${stem}.json`, b64:b64FromText(JSON.stringify(info, null, 2) + "\n") },
+      { path:`inbox/${stem}.${lastExt}`, b64:audioB64 },
+    ], `Recording: ${info.title || stem}`, s => msg($("upMsg"), s));
+    msg($("upMsg"), "✅ Uploaded. The transcript usually shows up in the Notes tab within a few minutes.", "ok");
+    window.onbeforeunload = null; lastBlob = null;
+    setTimeout(() => { show($("review"), false); $("timer").textContent = "00:00"; }, 6000);
+  } catch (e) {
+    $("uploadBtn").disabled = false;
+    msg($("upMsg"), "❌ Upload failed: " + e.message + "\nYour recording is still here. Try again, or tap 'Save copy to phone'.", "err");
+  }
+};
+
+// ---------- notes ----------
+let current = null;
+async function loadNotes() {
+  show($("noteView"), false); show($("noteList").parentElement, true);
+  if (!ready()) { $("noteList").innerHTML = '<p class="hint">Do Setup first (⚙️ at the top).</p>'; return; }
+  $("noteList").innerHTML = '<p class="hint">Loading…</p>'; $("pending").innerHTML = "";
+  try {
+    const inbox = await gh("/contents/inbox").catch(e => e.status === 404 ? [] : Promise.reject(e));
+    const waiting = inbox.filter(f => /\.(webm|m4a|mp4|mp3|wav|ogg|oga|opus|aac|flac|3gp|amr|mov)$/i.test(f.name));
+    const errors = inbox.filter(f => /\.error\.txt$/i.test(f.name));
+    if (waiting.length) msg($("pending"), `⏳ ${waiting.length} recording(s) waiting to be transcribed` + (errors.length ? ` — ${errors.length} failed, see the inbox folder on GitHub.` : "."), errors.length ? "err" : "info");
+  } catch (e) {}
+  let idx;
+  try { idx = JSON.parse(await gh("/contents/index.json", { raw:true })); }
+  catch (e) { $("noteList").innerHTML = ""; if (e.status === 404) return msg($("noteList"), "No meetings yet. Record one!"); return msg($("noteList"), e.message, "err"); }
+  $("noteList").innerHTML = "";
+  if (!idx.notes.length) return msg($("noteList"), "No meetings yet. Record one!");
+  for (const n of idx.notes) {
+    const d = document.createElement("div"); d.className = "note";
+    const b = document.createElement("b"); b.textContent = n.title; d.appendChild(b);
+    if (n.unnamed_speakers && n.unnamed_speakers.length) { const s = document.createElement("span"); s.className = "badge"; s.textContent = "name speakers"; b.appendChild(s); }
+    const sm = document.createElement("small"); sm.textContent = `${n.date} ${n.time} · ${n.duration_min} min` + (n.topic ? ` · ${n.topic}` : "") + (n.people.length ? ` · ${n.people.join(", ")}` : ""); d.appendChild(sm);
+    d.onclick = () => openNote(n);
+    $("noteList").appendChild(d);
+  }
+}
+$("refreshBtn").onclick = loadNotes;
+$("backBtn").onclick = loadNotes;
+
+async function openNote(n) {
+  show($("noteList").parentElement, false); show($("noteView"), true); msg($("nvMsg"), "Loading…");
+  $("nvSpeakers").innerHTML = ""; $("nvSummary").textContent = "";
+  try {
+    const metaFile = await gh(`/contents/${n.path}/meta.json`);
+    const meta = JSON.parse(textFromB64(metaFile.content));
+    const tr = JSON.parse(await gh(`/contents/${n.path}/transcript.json`, { raw:true }));
+    current = { path:n.path, sha:metaFile.sha, meta };
+    $("nvTitle").textContent = meta.title;
+    $("nvFacts").textContent = `${meta.date} ${meta.time} · ${Math.round((meta.duration_sec || 0) / 60)} min`;
+    $("nvSummary").textContent = tr.summary || "(no summary)";
+    $("nvTitleIn").value = meta.title || ""; $("nvTopic").value = meta.topic || "";
+    $("nvTags").value = (meta.tags || []).join(", "); $("nvPeople").value = (meta.participants || []).join(", ");
+    for (const lab of Object.keys(meta.speakers || {})) {
+      const said = tr.utterances.filter(u => u.speaker === lab);
+      const first = said.find(u => u.text.split(" ").length > 4) || said[0];
+      const l = document.createElement("label"); l.textContent = `Speaker ${lab} (${said.length} turns)`;
+      const s = document.createElement("div"); s.className = "sample"; s.textContent = first ? `“${first.text.slice(0, 160)}”` : "";
+      const i = document.createElement("input"); i.dataset.label = lab; i.value = meta.speakers[lab] || ""; i.placeholder = "Real name";
+      $("nvSpeakers").append(l, s, i);
+    }
+    const c = cfg(); $("nvOpen").href = `https://github.com/${c.owner}/${c.repo}/blob/HEAD/${n.path}/README.md`;
+    msg($("nvMsg"), "");
+  } catch (e) { msg($("nvMsg"), e.message, "err"); }
+}
+$("nvSave").onclick = async () => {
+  if (!current) return;
+  const m = current.meta;
+  m.title = $("nvTitleIn").value.trim() || m.title; m.topic = $("nvTopic").value.trim();
+  m.tags = list($("nvTags").value); m.participants = list($("nvPeople").value);
+  for (const i of $("nvSpeakers").querySelectorAll("input")) m.speakers[i.dataset.label] = i.value.trim();
+  msg($("nvMsg"), "Saving…");
+  try {
+    const r = await gh(`/contents/${current.path}/meta.json`, { method:"PUT", body:JSON.stringify({ message:`Names/tags: ${m.title}`, content:b64FromText(JSON.stringify(m, null, 2) + "\n"), sha:current.sha }) });
+    current.sha = r.content.sha;
+    msg($("nvMsg"), "✅ Saved. The transcript and index update with the new names in a minute or two.", "ok");
+  } catch (e) { msg($("nvMsg"), "❌ " + e.message + (e.status === 409 ? "\nThe note changed meanwhile. Go back and open it again." : ""), "err"); }
+};
+
+// first visit: go to setup
+if (!ready()) $("gear").onclick();
+</script>
+</body>
+</html>
