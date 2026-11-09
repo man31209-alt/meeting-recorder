@@ -3,409 +3,644 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#14202b">
+<meta name="theme-color" content="#0e1621">
 <meta name="robots" content="noindex">
-<title>Meeting Recorder</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Meetings">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Meeting Notes</title>
 <style>
-  :root { --bg:#14202b; --card:#1e2e3d; --ink:#eef3f7; --dim:#9fb2c3; --accent:#3fa7ff; --rec:#e5484d; --ok:#2fb67c; --warn:#f0b429; }
-  * { box-sizing:border-box; }
-  body { margin:0; font:16px/1.4 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
-  header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
-  header h1 { font-size:18px; margin:0; }
-  nav { display:flex; gap:6px; padding:0 12px; }
-  nav button { flex:1; padding:10px; border:0; border-radius:10px; background:var(--card); color:var(--dim); font-size:15px; }
-  nav button.on { background:var(--accent); color:#fff; }
-  main { padding:12px; max-width:640px; margin:0 auto; }
-  .card { background:var(--card); border-radius:14px; padding:14px; margin-bottom:12px; }
-  label { display:block; font-size:13px; color:var(--dim); margin:10px 0 4px; }
-  input, textarea, select { width:100%; padding:10px; border-radius:8px; border:1px solid #33495d; background:#13202c; color:var(--ink); font-size:16px; }
-  textarea { min-height:60px; }
-  .btn { display:inline-block; padding:12px 16px; border:0; border-radius:10px; background:var(--accent); color:#fff; font-size:16px; font-weight:600; }
-  .btn.grey { background:#3a4f63; } .btn.red { background:var(--rec); } .btn.green { background:var(--ok); }
-  .btn:disabled { opacity:.5; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  #recBtn { width:150px; height:150px; border-radius:50%; border:6px solid #33495d; background:var(--rec); color:#fff; font-size:20px; font-weight:700; display:block; margin:10px auto; }
-  #recBtn.live { animation:pulse 1.4s infinite; }
-  @keyframes pulse { 50% { box-shadow:0 0 0 14px rgba(229,72,77,.25); } }
-  #timer { text-align:center; font-size:34px; font-variant-numeric:tabular-nums; }
-  #meter { height:8px; background:#13202c; border-radius:4px; overflow:hidden; margin:8px 0; }
-  #meter div { height:100%; width:0; background:var(--ok); transition:width .1s; }
-  .msg { padding:10px; border-radius:8px; margin-top:10px; font-size:14px; white-space:pre-wrap; }
-  .msg.ok { background:rgba(47,182,124,.18); } .msg.err { background:rgba(229,72,77,.2); } .msg.info { background:rgba(63,167,255,.15); }
-  .hint { font-size:13px; color:var(--dim); }
-  .note { padding:12px; border-bottom:1px solid #2b3f52; cursor:pointer; }
-  .note:last-child { border-bottom:0; }
-  .note b { display:block; } .note small { color:var(--dim); }
-  .badge { display:inline-block; font-size:11px; padding:2px 6px; border-radius:6px; background:var(--warn); color:#222; margin-left:6px; }
-  .sample { font-size:13px; color:var(--dim); margin:2px 0 6px; font-style:italic; }
-  .summary { white-space:pre-wrap; font-size:14px; }
+  :root {
+    --bg:#0e1621; --bg2:#121c29; --card:#172331; --card2:#1d2b3b; --line:#26374a;
+    --ink:#eef3f8; --dim:#93a5b8; --faint:#62768b;
+    --accent:#4cc2ff; --accent2:#2a8fd6; --rec:#ff4d5e; --ok:#33c48d; --warn:#ffc147; --ai:#b892ff;
+    --r:18px;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body { margin:0; font:16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+         background:radial-gradient(120% 60% at 50% 0%, #17283b 0%, var(--bg) 60%); background-attachment:fixed; color:var(--ink); }
+  .app { max-width:560px; margin:0 auto; min-height:100%; padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 96px); }
+  .top { display:flex; align-items:center; justify-content:space-between; padding:8px 2px 14px; }
+  .top h1 { font-size:22px; letter-spacing:-.3px; margin:0; }
+  .top .sub { color:var(--dim); font-size:13px; }
+  .iconbtn { width:40px; height:40px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--ink); font-size:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:16px; margin-bottom:14px; }
+  .card h3 { margin:0 0 10px; font-size:16px; }
+  .muted { color:var(--dim); font-size:14px; }
+  .tiny { color:var(--faint); font-size:12px; }
+  label { display:block; font-size:13px; color:var(--dim); margin:14px 0 6px; }
+  input, textarea { width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:var(--bg2); color:var(--ink); font:inherit; }
+  input:focus, textarea:focus { outline:2px solid var(--accent2); border-color:transparent; }
+  input::placeholder, textarea::placeholder { color:#7f93a8; }
+  textarea { min-height:84px; resize:vertical; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:13px 18px; border-radius:14px; border:0; font:600 16px/1 inherit; color:#fff; background:var(--accent2); text-decoration:none; cursor:pointer; }
+  .btn.block { width:100%; }
+  .btn.ghost { background:transparent; border:1px solid var(--line); color:var(--ink); }
+  .btn.ok { background:var(--ok); } .btn.red { background:var(--rec); }
+  .btn:disabled { opacity:.45; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   .hidden { display:none !important; }
-  a { color:var(--accent); }
+
+  /* record screen */
+  .stage { display:flex; flex-direction:column; align-items:center; padding:18px 0 8px; }
+  .status { font-size:14px; color:var(--dim); height:20px; margin-bottom:6px; }
+  .status.live { color:var(--rec); font-weight:600; }
+  #timer { font-size:56px; font-weight:300; letter-spacing:1px; font-variant-numeric:tabular-nums; margin:4px 0 10px; }
+  #wave { width:100%; height:70px; display:block; margin-bottom:18px; }
+  .recwrap { position:relative; width:168px; height:168px; }
+  .recwrap::before { content:""; position:absolute; inset:-10px; border-radius:50%; border:2px solid rgba(255,77,94,.25); }
+  #recBtn { position:absolute; inset:0; border-radius:50%; border:0; background:radial-gradient(circle at 35% 30%, #ff7683, var(--rec) 60%, #d63345); color:#fff;
+            font:700 19px/1.1 inherit; box-shadow:0 12px 40px rgba(255,77,94,.35); cursor:pointer; transition:transform .15s; }
+  #recBtn:active { transform:scale(.96); }
+  #recBtn .sq { display:block; width:46px; height:46px; margin:0 auto; border-radius:10px; background:#fff; }
+  .live #recBtn { animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%{ box-shadow:0 0 0 0 rgba(255,77,94,.55);} 70%{ box-shadow:0 0 0 26px rgba(255,77,94,0);} 100%{ box-shadow:0 0 0 0 rgba(255,77,94,0);} }
+  .controls { display:flex; gap:12px; margin-top:22px; min-height:48px; }
+  .tip { text-align:center; margin-top:14px; }
+  .banner { border-radius:14px; padding:14px; margin:14px 0; font-size:15px; }
+  .banner.ok { background:rgba(51,196,141,.14); border:1px solid rgba(51,196,141,.35); }
+  .banner.err { background:rgba(255,77,94,.12); border:1px solid rgba(255,77,94,.35); }
+  .banner.info { background:rgba(76,194,255,.1); border:1px solid rgba(76,194,255,.3); }
+  .banner.warn { background:rgba(255,193,71,.1); border:1px solid rgba(255,193,71,.35); }
+  .bar { height:6px; background:var(--bg2); border-radius:3px; overflow:hidden; margin-top:10px; }
+  .bar div { height:100%; width:0; background:var(--accent); transition:width .3s; }
+
+  /* notes list */
+  .search { position:relative; margin-bottom:12px; }
+  .search input { padding-left:40px; }
+  .search span { position:absolute; left:14px; top:11px; color:var(--faint); }
+  .note { display:block; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:10px; cursor:pointer; }
+  .note:active { background:var(--card2); }
+  .note .t { font-weight:650; font-size:16px; }
+  .note .m { color:var(--dim); font-size:13px; margin-top:3px; }
+  .note .s { color:var(--dim); font-size:14px; margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chip { font-size:12px; padding:3px 9px; border-radius:999px; background:var(--card2); color:var(--dim); border:1px solid var(--line); }
+  .chip.warn { background:rgba(255,193,71,.14); color:var(--warn); border-color:rgba(255,193,71,.3); }
+  .chip.ai { background:rgba(184,146,255,.12); color:var(--ai); border-color:rgba(184,146,255,.3); }
+  .empty { text-align:center; padding:40px 10px; color:var(--dim); }
+
+  /* note detail */
+  .back { background:none; border:0; color:var(--accent); font:600 16px inherit; padding:6px 0 12px; cursor:pointer; }
+  .h { font-size:22px; font-weight:700; letter-spacing:-.2px; margin:0 0 4px; }
+  .summary { white-space:pre-wrap; font-size:15px; }
+  .spk { border:1px solid var(--line); border-radius:14px; padding:12px; margin-top:10px; background:var(--bg2); }
+  .spk .lab { font-size:13px; color:var(--dim); }
+  .spk .quote { font-size:14px; font-style:italic; color:#c5d2df; margin:6px 0 8px; }
+  .sugg { display:inline-flex; gap:6px; align-items:center; margin-top:8px; padding:6px 10px; border-radius:10px; background:rgba(184,146,255,.12); color:var(--ai); border:1px solid rgba(184,146,255,.3); font-size:13px; cursor:pointer; }
+  .stepper { display:flex; align-items:center; gap:12px; }
+  .stepper button { width:42px; height:42px; border-radius:12px; border:1px solid var(--line); background:var(--card2); color:var(--ink); font-size:22px; }
+  .stepper b { font-size:22px; min-width:28px; text-align:center; }
+  .savebar { position:sticky; bottom:84px; margin-top:6px; }
+  ul.clean { margin:6px 0 0; padding-left:20px; } ul.clean li { margin:4px 0; }
+
+  /* tab bar */
+  .tabs { position:fixed; left:0; right:0; bottom:0; padding:8px 12px calc(env(safe-area-inset-bottom) + 8px); background:rgba(14,22,33,.92);
+          backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-top:1px solid var(--line); display:flex; justify-content:center; gap:6px; z-index:10; }
+  .tabs button { flex:1; max-width:180px; border:0; background:none; color:var(--faint); font:600 12px inherit; padding:6px 0; border-radius:12px; cursor:pointer; }
+  .tabs button i { display:block; font-style:normal; font-size:22px; margin-bottom:2px; }
+  .tabs button.on { color:var(--accent); background:rgba(76,194,255,.08); }
+  details { margin-top:10px; } summary { cursor:pointer; color:var(--accent); font-size:14px; }
+  ol.steps { padding-left:20px; margin:8px 0; font-size:14px; color:#c9d5e1; } ol.steps li { margin:6px 0; }
+  code { background:var(--bg2); padding:1px 6px; border-radius:6px; font-size:13px; }
 </style>
 </head>
 <body>
-<header>
-  <h1>🎙️ Meeting Recorder</h1>
-  <button class="btn grey" id="gear" style="padding:6px 10px">⚙️ Setup</button>
-</header>
-<nav>
-  <button id="tabRec" class="on">Record</button>
-  <button id="tabNotes">Notes</button>
+<div class="app">
+
+  <!-- ============ RECORD ============ -->
+  <section id="vRec">
+    <div class="top">
+      <div><h1>Record</h1><div class="sub" id="whoami">Meeting Notes</div></div>
+      <button class="iconbtn" data-go="vHelp" aria-label="Help">?</button>
+    </div>
+    <div id="pendingBanner"></div>
+    <div class="card">
+      <div class="stage" id="stage">
+        <div class="status" id="status">Ready</div>
+        <div id="timer">0:00</div>
+        <canvas id="wave"></canvas>
+        <div class="recwrap"><button id="recBtn" aria-label="Start recording">Tap to<br>record</button></div>
+        <div class="controls">
+          <button class="btn ghost hidden" id="pauseBtn">⏸ Pause</button>
+          <button class="btn hidden" id="stopBtn">■ Stop &amp; save</button>
+        </div>
+      </div>
+    </div>
+    <div id="upBox"></div>
+    <p class="tiny tip">Let everyone know you're recording. Put the phone in the middle of the group and keep the screen on.</p>
+    <p class="tip"><a href="#" id="pickLink" class="muted">Upload a recording that's already on this phone</a></p>
+    <input type="file" id="filePick" class="hidden" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg,.aac">
+  </section>
+
+  <!-- ============ NOTES LIST ============ -->
+  <section id="vNotes" class="hidden">
+    <div class="top">
+      <div><h1>Meetings</h1><div class="sub" id="countLine"></div></div>
+      <button class="iconbtn" id="refreshBtn" aria-label="Refresh">↻</button>
+    </div>
+    <div class="search"><span>🔍</span><input id="q" placeholder="Search title, topic, people…" autocomplete="off"></div>
+    <div id="waiting"></div>
+    <div id="list"></div>
+  </section>
+
+  <!-- ============ NOTE DETAIL ============ -->
+  <section id="vNote" class="hidden">
+    <button class="back" id="backBtn">‹ Meetings</button>
+    <div class="h" id="dTitle"></div>
+    <div class="muted" id="dFacts"></div>
+    <div class="chips" id="dChips"></div>
+    <div id="dMsgTop"></div>
+
+    <div class="card" style="margin-top:14px" id="audioCard">
+      <h3>Recording</h3>
+      <button class="btn ghost" id="playBtn">▶ Load recording</button>
+      <audio id="dAudio" controls class="hidden" style="width:100%"></audio>
+      <div class="tiny" id="audioNote" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card">
+      <h3>Summary</h3>
+      <div class="summary" id="dSummary"></div>
+      <div id="dActions"></div>
+    </div>
+
+    <div class="card">
+      <h3>Who spoke</h3>
+      <div class="muted">Each voice is shown with the first thing it said. Type a name, or tap a suggestion.</div>
+      <div id="dSpeakers"></div>
+      <details id="fixBox">
+        <summary>Wrong number of people?</summary>
+        <p class="muted">Tell us how many people actually talked, and the recording is checked again (about the cost of the first pass).</p>
+        <div class="stepper"><button id="cMinus">−</button><b id="cVal">2</b><button id="cPlus">+</button><span class="muted">people talked</span></div>
+        <div class="row" style="margin-top:10px"><button class="btn ghost" id="fixBtn">Re-check speakers</button></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3>Details</h3>
+      <div class="muted">Anything you add here helps the AI fill in the rest. Leave a box empty and the AI's guess (shown in grey) is used.</div>
+      <label>What was this about? Who was there? Anything that helps.</label>
+      <textarea id="dContext" placeholder="e.g. Weekly schedule meeting with Glenn and Eric about the 23B tool install. I'm the one who talks first."></textarea>
+      <label>Title</label><input id="dTitleIn">
+      <label>Topic</label><input id="dTopic">
+      <label>People who were there (separate with commas)</label><input id="dPeople" placeholder="e.g. Glenn, Eric">
+      <label>Tags (separate with commas)</label><input id="dTags">
+    </div>
+    <div class="savebar"><button class="btn ok block" id="saveBtn">Save</button></div>
+    <div id="dMsg"></div>
+    <p class="tip"><a id="dOpen" class="muted" target="_blank" rel="noopener">Open full transcript</a></p>
+  </section>
+
+  <!-- ============ SETTINGS / SETUP ============ -->
+  <section id="vSet" class="hidden">
+    <div class="top"><div><h1>Settings</h1><div class="sub">Saved on this phone only</div></div></div>
+    <div class="card" id="welcome">
+      <h3>👋 Welcome</h3>
+      <div class="muted">This connects the recorder to <b>your own private</b> notes on GitHub. It takes a minute, once. Your recordings never go anywhere else.</div>
+    </div>
+    <div class="card">
+      <label style="margin-top:0">1. Your GitHub user name</label>
+      <input id="sOwner" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="e.g. jsmith">
+      <label>2. Your private notes repository</label>
+      <input id="sRepo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="meeting-notes">
+      <label>3. Your phone key (token)</label>
+      <input id="sToken" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="github_pat_…">
+      <div class="tiny" id="tokState" style="margin-top:6px"></div>
+      <details>
+        <summary>How do I get a phone key?</summary>
+        <ol class="steps">
+          <li>On this phone, open <b>github.com</b> and sign in.</li>
+          <li>Go to <b>Settings → Developer settings → Personal access tokens → Fine-grained tokens</b>, then <b>Generate new token</b>.</li>
+          <li>Name it <code>meeting phone</code>. Set expiration to 1 year.</li>
+          <li>Repository access: <b>Only select repositories</b>, then pick your notes repository.</li>
+          <li>Permissions: <b>Contents → Read and write</b>. Nothing else.</li>
+          <li>Tap <b>Generate token</b>, copy it, paste it in box 3.</li>
+        </ol>
+        <div class="tiny">The key stays on this phone. Never send it to anyone.</div>
+      </details>
+      <div class="row" style="margin-top:16px">
+        <button class="btn" id="sSave">Connect</button>
+        <button class="btn ghost" id="sForget">Remove key</button>
+      </div>
+      <div id="sMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Add to home screen</h3>
+      <div class="muted"><b>iPhone:</b> Safari → Share → <i>Add to Home Screen</i>.<br><b>Android:</b> Chrome → ⋮ → <i>Add to Home screen</i>.</div>
+    </div>
+  </section>
+
+  <!-- ============ HELP ============ -->
+  <section id="vHelp" class="hidden">
+    <button class="back" data-go="vRec">‹ Back</button>
+    <div class="h">How it works</div>
+    <div class="card">
+      <ol class="steps">
+        <li><b>Tap the red button</b> to record. Tap <b>Stop &amp; save</b> when the meeting ends. It uploads by itself.</li>
+        <li>In a few minutes the meeting appears under <b>Meetings</b>, with a title, topic, summary, action items and who spoke, all filled in for you.</li>
+        <li>Open it to <b>name the voices</b> or add details. The AI uses what you add to fix the rest.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>Tips for good results</h3>
+      <ul class="clean muted">
+        <li>Phone in the middle of the table, screen on, not in a pocket.</li>
+        <li>Saying names out loud ("Thanks, Glenn") helps the AI name people.</li>
+        <li>If it shows too many or too few people, open the meeting → <i>Wrong number of people?</i></li>
+        <li>No signal? Recordings that fail to upload are kept on this phone until you send them.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Be fair and legal</h3>
+      <div class="muted">Always tell people they're being recorded. Some states require everyone's permission. Check your company's rules before recording work meetings: the audio is sent to a transcription service.</div>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs">
+  <button data-go="vRec" class="on"><i>🎙️</i>Record</button>
+  <button data-go="vNotes"><i>🗂️</i>Meetings</button>
+  <button data-go="vSet"><i>⚙️</i>Settings</button>
 </nav>
-<main>
-
-<!-- SETUP -->
-<section id="setup" class="hidden">
-  <div class="card">
-    <h3 style="margin-top:0">Setup (this phone only)</h3>
-    <p class="hint">These are saved only in this phone's browser. They are never put in the code or sent anywhere except GitHub.</p>
-    <label>GitHub user name (owner of the notes repo)</label>
-    <input id="cfgOwner" autocapitalize="off" autocorrect="off" spellcheck="false">
-    <label>Private notes repo name</label>
-    <input id="cfgRepo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="meeting-notes">
-    <label>Upload token (fine-grained, this repo only, Contents: read and write)</label>
-    <input id="cfgToken" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="github_pat_...">
-    <p class="hint">Leave the token box empty to keep the one already saved.</p>
-    <div class="row" style="margin-top:12px">
-      <button class="btn" id="cfgSave">Save and test</button>
-      <button class="btn grey" id="cfgForget">Forget token</button>
-    </div>
-    <div id="cfgMsg"></div>
-  </div>
-</section>
-
-<!-- RECORD -->
-<section id="rec">
-  <div class="card">
-    <p class="hint" style="margin-top:0">⚖️ Tell everyone they are being recorded before you start.</p>
-    <div id="timer">00:00</div>
-    <div id="meter"><div></div></div>
-    <button id="recBtn">Record</button>
-    <div class="row" style="justify-content:center">
-      <button class="btn grey hidden" id="pauseBtn">Pause</button>
-      <button class="btn hidden" id="stopBtn">Stop</button>
-    </div>
-    <p class="hint" style="text-align:center">Keep this screen on while recording. Locking the phone can stop the mic.</p>
-  </div>
-
-  <div class="card">
-    <label>Title</label>
-    <input id="mTitle" placeholder="e.g. Weekly site meeting">
-    <label>Topic</label>
-    <input id="mTopic" placeholder="e.g. Tool install schedule">
-    <label>Who's there (comma separated)</label>
-    <input id="mPeople" placeholder="e.g. Glenn, Eric">
-    <label>Tags (comma separated)</label>
-    <input id="mTags" placeholder="e.g. micron, schedule">
-    <label>How many people will talk? (optional, helps speaker labels)</label>
-    <input id="mCount" type="number" min="0" max="20" placeholder="leave blank if unsure">
-  </div>
-
-  <div class="card hidden" id="review">
-    <b>Recording ready</b>
-    <audio id="player" controls style="width:100%;margin-top:8px"></audio>
-    <div class="row" style="margin-top:10px">
-      <button class="btn green" id="uploadBtn">Upload</button>
-      <a class="btn grey" id="saveLink" download>Save copy to phone</a>
-      <button class="btn red" id="discardBtn">Discard</button>
-    </div>
-    <div id="upMsg"></div>
-  </div>
-
-  <div class="card">
-    <b>Already have a recording?</b>
-    <p class="hint">Pick an audio file (voice memo, etc.) and upload it the same way.</p>
-    <input type="file" id="filePick" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg">
-  </div>
-</section>
-
-<!-- NOTES -->
-<section id="notes" class="hidden">
-  <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <b>Your meetings</b>
-      <button class="btn grey" id="refreshBtn" style="padding:6px 10px">↻ Refresh</button>
-    </div>
-    <div id="pending"></div>
-    <div id="noteList"><p class="hint">Loading…</p></div>
-  </div>
-  <div class="card hidden" id="noteView">
-    <button class="btn grey" id="backBtn" style="padding:6px 10px">← Back</button>
-    <h3 id="nvTitle"></h3>
-    <div class="hint" id="nvFacts"></div>
-    <h4>Summary</h4>
-    <div class="summary" id="nvSummary"></div>
-    <h4>Name the speakers</h4>
-    <p class="hint">Each label shows what that speaker said first. Type their real name.</p>
-    <div id="nvSpeakers"></div>
-    <label>Title</label><input id="nvTitleIn">
-    <label>Topic</label><input id="nvTopic">
-    <label>Tags (comma separated)</label><input id="nvTags">
-    <label>Other people there (comma separated)</label><input id="nvPeople">
-    <div class="row" style="margin-top:12px">
-      <button class="btn green" id="nvSave">Save</button>
-      <a class="btn grey" id="nvOpen" target="_blank" rel="noopener">Open on GitHub</a>
-    </div>
-    <div id="nvMsg"></div>
-  </div>
-</section>
-</main>
 
 <script>
 "use strict";
-// ---------- settings (stored in this browser only) ----------
-const LS = { owner:"mn.owner", repo:"mn.repo", token:"mn.token" };
-const cfg = () => ({ owner:localStorage.getItem(LS.owner)||"", repo:localStorage.getItem(LS.repo)||"", token:localStorage.getItem(LS.token)||"" });
 const $ = id => document.getElementById(id);
 const show = (el, on) => el.classList.toggle("hidden", !on);
-function msg(el, text, kind) { el.innerHTML = ""; if (!text) return; const d = document.createElement("div"); d.className = "msg " + (kind||"info"); d.textContent = text; el.appendChild(d); }
-const ready = () => { const c = cfg(); return c.owner && c.repo && c.token; };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+function banner(el, text, kind, html) { el.innerHTML = text ? `<div class="banner ${kind || "info"}">${html ? text : esc(text)}</div>` : ""; }
+const list = s => (s || "").split(",").map(x => x.trim()).filter(Boolean);
+const pad = n => String(n).padStart(2, "0");
 
-// ---------- GitHub API ----------
+// ---------------- settings (this browser only) ----------------
+const LS = { owner:"mn.owner", repo:"mn.repo", token:"mn.token" };
+const cfg = () => ({ owner:localStorage.getItem(LS.owner) || "", repo:localStorage.getItem(LS.repo) || "", token:localStorage.getItem(LS.token) || "" });
+const ready = () => { const c = cfg(); return !!(c.owner && c.repo && c.token); };
+
+// ---------------- GitHub API ----------------
 async function gh(path, opts = {}) {
   const c = cfg();
-  const url = path.startsWith("http") ? path : `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}${path}`;
-  const res = await fetch(url, { cache:"no-store", ...opts, headers:{ "Authorization":"Bearer " + c.token, "Accept": opts.raw ? "application/vnd.github.raw+json" : "application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28", ...(opts.body ? {"Content-Type":"application/json"} : {}) } });
-  if (!res.ok) { let t = ""; try { t = (await res.json()).message; } catch (e) {} const err = new Error(`GitHub ${res.status}: ${t || res.statusText}`); err.status = res.status; throw err; }
+  const url = `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}${path}`;
+  const res = await fetch(url, { cache:"no-store", method:opts.method || "GET", body:opts.body,
+    headers:{ "Authorization":"Bearer " + c.token, "Accept":(opts.raw || opts.blob) ?"application/vnd.github.raw+json" : "application/vnd.github+json",
+              "X-GitHub-Api-Version":"2022-11-28", ...(opts.body ? { "Content-Type":"application/json" } : {}) } });
+  if (!res.ok) {
+    let t = ""; try { t = (await res.json()).message; } catch (e) {}
+    const err = new Error(friendly(res.status, t)); err.status = res.status; throw err;
+  }
   if (res.status === 204) return null;
+  if (opts.blob) return res.blob();
   return opts.raw ? res.text() : res.json();
 }
-function b64FromBytes(bytes) { let s = ""; const CH = 0x8000; for (let i = 0; i < bytes.length; i += CH) s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH)); return btoa(s); }
+function friendly(code, t) {
+  if (code === 401) return "The phone key was refused. It may have expired. Make a new one in Settings.";
+  if (code === 403) return "The phone key isn't allowed to do that. It needs Contents: Read and write.";
+  if (code === 404) return "Not found. Check the user name and repository in Settings, and that the key includes that repository.";
+  if (code === 409) return "This changed while you were editing. Go back and open it again.";
+  return `GitHub said ${code}${t ? ": " + t : ""}`;
+}
+function b64FromBytes(bytes) { let s = ""; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
 const b64FromText = t => b64FromBytes(new TextEncoder().encode(t));
 const textFromB64 = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\n/g, "")), c => c.charCodeAt(0)));
-async function b64FromBlob(blob) { return b64FromBytes(new Uint8Array(await blob.arrayBuffer())); }
 
-// One commit containing several files (audio + its info file), so the workflow sees them together.
-async function commitFiles(files, message, onStep) {
+async function commitFiles(files, message, step) {
   const repo = await gh("");
-  const branch = repo.default_branch;
+  const branch = encodeURIComponent(repo.default_branch);
   const blobs = [];
   for (const f of files) {
-    onStep && onStep(`Uploading ${f.path.split("/").pop()}…`);
+    step(f.label || "Uploading…");
     const b = await gh("/git/blobs", { method:"POST", body:JSON.stringify({ content:f.b64, encoding:"base64" }) });
     blobs.push({ path:f.path, mode:"100644", type:"blob", sha:b.sha });
   }
   for (let attempt = 1; attempt <= 4; attempt++) {
-    onStep && onStep("Saving to repo…");
-    const ref = await gh(`/git/ref/heads/${encodeURIComponent(branch)}`);
+    step("Saving…");
+    const ref = await gh(`/git/ref/heads/${branch}`);
     const head = await gh(`/git/commits/${ref.object.sha}`);
     const tree = await gh("/git/trees", { method:"POST", body:JSON.stringify({ base_tree:head.tree.sha, tree:blobs }) });
     const commit = await gh("/git/commits", { method:"POST", body:JSON.stringify({ message, tree:tree.sha, parents:[ref.object.sha] }) });
-    try { await gh(`/git/refs/heads/${encodeURIComponent(branch)}`, { method:"PATCH", body:JSON.stringify({ sha:commit.sha }) }); return commit; }
+    try { await gh(`/git/refs/heads/${branch}`, { method:"PATCH", body:JSON.stringify({ sha:commit.sha }) }); return; }
     catch (e) { if (e.status !== 422 || attempt === 4) throw e; await new Promise(r => setTimeout(r, 1500 * attempt)); }
   }
 }
 
-// ---------- tabs ----------
-function tab(name) {
-  show($("rec"), name === "rec"); show($("notes"), name === "notes"); show($("setup"), name === "setup");
-  $("tabRec").classList.toggle("on", name === "rec"); $("tabNotes").classList.toggle("on", name === "notes");
-  if (name === "notes") loadNotes();
-}
-$("tabRec").onclick = () => tab("rec");
-$("tabNotes").onclick = () => tab("notes");
-$("gear").onclick = () => { const c = cfg(); $("cfgOwner").value = c.owner; $("cfgRepo").value = c.repo || "meeting-notes"; $("cfgToken").value = ""; tab("setup"); };
+// ---------------- keep unsent recordings safe (IndexedDB) ----------------
+const DB = { open() { return new Promise((ok, no) => { const r = indexedDB.open("meeting-notes", 1); r.onupgradeneeded = () => r.result.createObjectStore("pending", { keyPath:"stem" }); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
+  async run(mode, fn) { const db = await this.open(); return new Promise((ok, no) => { const tx = db.transaction("pending", mode); const req = fn(tx.objectStore("pending")); tx.oncomplete = () => ok(req && req.result); tx.onerror = () => no(tx.error); }); },
+  put(item) { return this.run("readwrite", s => s.put(item)).catch(() => {}); },
+  del(stem) { return this.run("readwrite", s => s.delete(stem)).catch(() => {}); },
+  all() { return this.run("readonly", s => s.getAll()).catch(() => []); } };
 
-$("cfgSave").onclick = async () => {
-  localStorage.setItem(LS.owner, $("cfgOwner").value.trim());
-  localStorage.setItem(LS.repo, $("cfgRepo").value.trim());
-  const t = $("cfgToken").value.trim(); if (t) localStorage.setItem(LS.token, t);
-  $("cfgToken").value = "";
-  if (!ready()) return msg($("cfgMsg"), "Fill in all three boxes.", "err");
-  msg($("cfgMsg"), "Testing…");
+// ---------------- navigation ----------------
+const views = ["vRec", "vNotes", "vNote", "vSet", "vHelp"];
+function go(v) {
+  views.forEach(x => show($(x), x === v));
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.go === v || (v === "vNote" && b.dataset.go === "vNotes")));
+  window.scrollTo(0, 0);
+  if (v === "vNotes") loadList();
+  if (v === "vSet") fillSettings();
+}
+document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
+
+// ---------------- settings screen ----------------
+function fillSettings() {
+  const c = cfg();
+  $("sOwner").value = c.owner; $("sRepo").value = c.repo || "meeting-notes"; $("sToken").value = "";
+  $("tokState").textContent = c.token ? "A key is saved on this phone. Leave box 3 empty to keep it." : "";
+  show($("welcome"), !ready());
+}
+$("sSave").onclick = async () => {
+  localStorage.setItem(LS.owner, $("sOwner").value.trim());
+  localStorage.setItem(LS.repo, $("sRepo").value.trim());
+  const t = $("sToken").value.trim(); if (t) localStorage.setItem(LS.token, t);
+  $("sToken").value = "";
+  if (!ready()) return banner($("sMsg"), "Please fill in all three boxes.", "err");
+  banner($("sMsg"), "Checking…");
   try {
     const r = await gh("");
-    if (!r.private) return msg($("cfgMsg"), "Connected, but this repo is PUBLIC. Your notes would be visible to anyone. Make it private on GitHub first.", "err");
-    if (r.permissions && !r.permissions.push) return msg($("cfgMsg"), "Connected, but the token can't write. Give it Contents: Read and write.", "err");
-    msg($("cfgMsg"), `✅ Connected to private repo ${r.full_name}.`, "ok");
-  } catch (e) { msg($("cfgMsg"), "❌ " + e.message + "\nCheck the names and that the token includes this repo.", "err"); }
+    if (!r.private) return banner($("sMsg"), "This repository is PUBLIC, so anyone could read your notes. Make it private on GitHub first (repository → Settings → Danger Zone → Change visibility).", "err");
+    if (r.permissions && !r.permissions.push) return banner($("sMsg"), "Connected, but the key can't save. Give it Contents: Read and write.", "err");
+    banner($("sMsg"), `✅ All set! Connected to your private notes (${r.full_name}).`, "ok");
+    fillSettings(); setWho();
+  } catch (e) { banner($("sMsg"), "❌ " + e.message, "err"); }
 };
-$("cfgForget").onclick = () => { localStorage.removeItem(LS.token); msg($("cfgMsg"), "Token removed from this phone.", "ok"); };
+$("sForget").onclick = () => { localStorage.removeItem(LS.token); fillSettings(); banner($("sMsg"), "Key removed from this phone.", "ok"); };
+function setWho() { const c = cfg(); $("whoami").textContent = ready() ? `Saving to ${c.owner}/${c.repo}` : "Not connected yet: open Settings"; }
 
-// ---------- recording ----------
-let rec = null, chunks = [], stream = null, startedAt = 0, elapsedBefore = 0, tick = null, wake = null, audioCtx = null, lastBlob = null, lastStart = null, lastExt = "webm";
-const fmt = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" : "") + String(m).padStart(2, "0") + ":" + String(x).padStart(2, "0"); };
-function pickType() {
-  const types = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"];
-  for (const t of types) if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t;
-  return "";
+// ---------------- recorder ----------------
+let rec = null, chunks = [], stream = null, startedAt = 0, before = 0, tick = null, wake = null, actx = null, levels = [], startDate = null;
+const fmt = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${pad(m)}:${pad(x)}` : `${m}:${pad(x)}`; };
+const elapsed = () => before + (rec && rec.state === "recording" ? (Date.now() - startedAt) / 1000 : 0);
+function pickType() { for (const t of ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"]) if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t; return ""; }
+const extFor = t => /mp4|m4a|aac/.test(t) ? "m4a" : /ogg/.test(t) ? "ogg" : /mpeg|mp3/.test(t) ? "mp3" : /wav/.test(t) ? "wav" : "webm";
+function stamp(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`; }
+function setStage(state) {
+  const live = state === "live";
+  $("stage").classList.toggle("live", live);
+  $("status").className = "status" + (live ? " live" : "");
+  $("status").textContent = { idle:"Ready", live:"● Recording", paused:"Paused" }[state];
+  $("recBtn").innerHTML = state === "idle" ? "Tap to<br>record" : state === "live" ? '<span class="sq"></span>' : "Resume";
+  $("recBtn").setAttribute("aria-label", state === "idle" ? "Start recording" : state === "live" ? "Pause" : "Resume");
+  show($("pauseBtn"), false); show($("stopBtn"), state !== "idle");
 }
-const extFor = type => /mp4|m4a|aac/.test(type) ? "m4a" : /ogg/.test(type) ? "ogg" : /mpeg|mp3/.test(type) ? "mp3" : /wav/.test(type) ? "wav" : "webm";
-function elapsed() { return elapsedBefore + (rec && rec.state === "recording" ? (Date.now() - startedAt) / 1000 : 0); }
 
 $("recBtn").onclick = async () => {
-  if (rec) return;
-  if (!window.MediaRecorder) return alert("This browser can't record audio. Use Chrome (Android) or Safari (iPhone).");
-  if (lastBlob && !confirm("Discard the recording that hasn't been uploaded?")) return;
-  resetReview();
+  if (rec) { // tap the big button while recording = pause / resume
+    if (rec.state === "recording") { before = elapsed(); rec.pause(); setStage("paused"); }
+    else if (rec.state === "paused") { startedAt = Date.now(); rec.resume(); setStage("live"); }
+    return;
+  }
+  if (!ready()) { go("vSet"); return banner($("sMsg"), "Connect to your notes first, then come back and record.", "warn"); }
+  if (!window.MediaRecorder) return banner($("upBox"), "This browser can't record. Use Safari on iPhone or Chrome on Android.", "err");
   try { stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true } }); }
-  catch (e) { return alert("Microphone blocked: " + e.message + "\nAllow the mic for this site in your browser settings."); }
+  catch (e) { return banner($("upBox"), "The microphone is blocked. Allow the microphone for this site in your browser settings, then try again.", "err"); }
   const type = pickType();
   rec = new MediaRecorder(stream, type ? { mimeType:type, audioBitsPerSecond:32000 } : { audioBitsPerSecond:32000 });
-  chunks = []; elapsedBefore = 0; startedAt = Date.now(); lastStart = new Date();
+  chunks = []; before = 0; startedAt = Date.now(); startDate = new Date(); levels = [];
   rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-  rec.onstop = finish;
+  rec.onstop = finished;
   rec.start(1000);
   try { wake = await navigator.wakeLock.request("screen"); } catch (e) { wake = null; }
-  meter(stream);
-  $("recBtn").textContent = "Recording"; $("recBtn").classList.add("live");
-  show($("pauseBtn"), true); show($("stopBtn"), true); $("pauseBtn").textContent = "Pause";
+  startMeter(stream);
+  banner($("upBox"), "");
+  setStage("live");
   tick = setInterval(() => { $("timer").textContent = fmt(elapsed()); }, 250);
+  window.onbeforeunload = () => "Recording in progress";
 };
-$("pauseBtn").onclick = () => {
-  if (!rec) return;
-  if (rec.state === "recording") { elapsedBefore = elapsed(); rec.pause(); $("pauseBtn").textContent = "Resume"; $("recBtn").classList.remove("live"); $("recBtn").textContent = "Paused"; }
-  else if (rec.state === "paused") { startedAt = Date.now(); rec.resume(); $("pauseBtn").textContent = "Pause"; $("recBtn").classList.add("live"); $("recBtn").textContent = "Recording"; }
-};
-$("stopBtn").onclick = () => { if (rec && rec.state !== "inactive") { elapsedBefore = elapsed(); rec.stop(); } };
-function finish() {
+$("stopBtn").onclick = () => { if (rec && rec.state !== "inactive") { before = elapsed(); rec.stop(); } };
+
+async function finished() {
   clearInterval(tick);
   stream && stream.getTracks().forEach(t => t.stop());
-  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  if (actx) { actx.close(); actx = null; }
   if (wake) { wake.release().catch(() => {}); wake = null; }
   const type = rec.mimeType || (chunks[0] && chunks[0].type) || "audio/webm";
-  lastExt = extFor(type);
-  lastBlob = new Blob(chunks, { type });
+  const blob = new Blob(chunks, { type });
   rec = null; chunks = [];
-  $("recBtn").textContent = "Record"; $("recBtn").classList.remove("live");
-  show($("pauseBtn"), false); show($("stopBtn"), false);
-  showReview();
+  setStage("idle"); drawWave(true);
+  const item = { stem:stamp(startDate), ext:extFor(type), blob, seconds:Math.round(before), saved:Date.now() };
+  await DB.put(item);              // safe on the phone first
+  window.onbeforeunload = null;
+  upload(item);
 }
-function meter(s) {
+
+async function upload(item) {
+  const box = $("upBox");
+  const mins = item.seconds ? ` (${fmt(item.seconds)})` : "";
+  box.innerHTML = `<div class="banner info"><b>Uploading your recording${mins}…</b><div class="tiny" id="upStep">Starting…</div><div class="bar"><div id="upBar"></div></div></div>`;
+  let pct = 5; const bar = () => $("upBar") && ($("upBar").style.width = pct + "%");
+  bar();
+  if (item.blob.size > 95e6) { return failed(item, "This recording is too big to upload in one go (over 95 MB)."); }
   try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const an = audioCtx.createAnalyser(); an.fftSize = 512;
-    audioCtx.createMediaStreamSource(s).connect(an);
-    const buf = new Uint8Array(an.fftSize);
-    const draw = () => { if (!audioCtx) { $("meter").firstElementChild.style.width = "0"; return; }
-      an.getByteTimeDomainData(buf); let peak = 0; for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
-      $("meter").firstElementChild.style.width = Math.min(100, peak / 64 * 100) + "%"; requestAnimationFrame(draw); };
-    draw();
-  } catch (e) {}
-}
-function showReview() {
-  const url = URL.createObjectURL(lastBlob);
-  $("player").src = url;
-  $("saveLink").href = url; $("saveLink").download = fileStem() + "." + lastExt;
-  msg($("upMsg"), `${(lastBlob.size / 1e6).toFixed(1)} MB, ${fmt(elapsedBefore)} long.`);
-  show($("review"), true); $("uploadBtn").disabled = false;
-  window.onbeforeunload = () => "You have a recording that isn't uploaded.";
-}
-function resetReview() { lastBlob = null; show($("review"), false); $("timer").textContent = "00:00"; msg($("upMsg"), ""); window.onbeforeunload = null; }
-$("discardBtn").onclick = () => { if (confirm("Delete this recording from the phone? It hasn't been uploaded.")) resetReview(); };
-
-$("filePick").onchange = () => {
-  const f = $("filePick").files[0]; if (!f) return;
-  if (lastBlob && !confirm("Replace the recording that hasn't been uploaded?")) return;
-  lastBlob = f; lastStart = new Date(f.lastModified || Date.now());
-  const m = /\.([a-z0-9]{2,4})$/i.exec(f.name); lastExt = m ? m[1].toLowerCase() : extFor(f.type);
-  if (!$("mTitle").value) $("mTitle").value = f.name.replace(/\.[^.]+$/, "");
-  elapsedBefore = 0; showReview(); $("filePick").value = "";
-};
-
-const pad = n => String(n).padStart(2, "0");
-const slug = s => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
-function fileStem() {
-  const d = lastStart || new Date();
-  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-  const s = slug($("mTitle").value);
-  return s ? `${stamp}_${s}` : stamp;
-}
-const list = s => (s || "").split(",").map(x => x.trim()).filter(Boolean);
-
-$("uploadBtn").onclick = async () => {
-  if (!lastBlob) return;
-  if (!ready()) { msg($("upMsg"), "Do Setup first (⚙️ at the top). Your recording is still here.", "err"); return; }
-  if (lastBlob.size > 95e6) { msg($("upMsg"), "Too big for one upload (over 95 MB). Save a copy to the phone instead.", "err"); return; }
-  $("uploadBtn").disabled = true;
-  const stem = fileStem();
-  const info = { title:$("mTitle").value.trim(), topic:$("mTopic").value.trim(), participants:list($("mPeople").value), tags:list($("mTags").value), speakers_expected:parseInt($("mCount").value, 10) || 0, recorded_at:(lastStart || new Date()).toISOString(), source:"recorder-page" };
-  try {
-    msg($("upMsg"), "Preparing…");
-    const audioB64 = await b64FromBlob(lastBlob);
+    const audioB64 = b64FromBytes(new Uint8Array(await item.blob.arrayBuffer())); pct = 25; bar();
+    const info = { recorded_at:new Date(item.saved).toISOString(), source:"recorder-page" };
     await commitFiles([
-      { path:`inbox/${stem}.json`, b64:b64FromText(JSON.stringify(info, null, 2) + "\n") },
-      { path:`inbox/${stem}.${lastExt}`, b64:audioB64 },
-    ], `Recording: ${info.title || stem}`, s => msg($("upMsg"), s));
-    msg($("upMsg"), "✅ Uploaded. The transcript usually shows up in the Notes tab within a few minutes.", "ok");
-    window.onbeforeunload = null; lastBlob = null;
-    setTimeout(() => { show($("review"), false); $("timer").textContent = "00:00"; }, 6000);
-  } catch (e) {
-    $("uploadBtn").disabled = false;
-    msg($("upMsg"), "❌ Upload failed: " + e.message + "\nYour recording is still here. Try again, or tap 'Save copy to phone'.", "err");
-  }
+      { path:`inbox/${item.stem}.json`, b64:b64FromText(JSON.stringify(info, null, 2) + "\n"), label:"Uploading…" },
+      { path:`inbox/${item.stem}.${item.ext}`, b64:audioB64, label:"Uploading audio…" },
+    ], `Recording ${item.stem}`, s => { $("upStep") && ($("upStep").textContent = s); pct = Math.min(95, pct + 18); bar(); });
+    await DB.del(item.stem);
+    pct = 100; bar();
+    box.innerHTML = `<div class="banner ok"><b>✅ Saved.</b> Your notes will be ready under <b>Meetings</b> in a few minutes, with the title, summary and speakers filled in.<div class="row" style="margin-top:10px"><button class="btn ghost" data-go="vNotes" id="toNotes">Go to Meetings</button></div></div>`;
+    $("toNotes").onclick = () => go("vNotes");
+    $("timer").textContent = "0:00";
+    checkPending();
+  } catch (e) { failed(item, e.message); }
+}
+function failed(item, why) {
+  const url = URL.createObjectURL(item.blob);
+  $("upBox").innerHTML = `<div class="banner err"><b>Not uploaded yet.</b> ${esc(why)}<br><span class="tiny">Don't worry, the recording is kept on this phone.</span>
+    <div class="row" style="margin-top:10px"><button class="btn" id="retryBtn">Try again</button><a class="btn ghost" href="${url}" download="${item.stem}.${item.ext}">Save to phone</a></div></div>`;
+  $("retryBtn").onclick = () => upload(item);
+  checkPending();
+}
+async function checkPending() {
+  const items = await DB.all();
+  const busy = $("upBox").querySelector(".banner.info, .banner.err");
+  if (!items.length || busy) return banner($("pendingBanner"), "");
+  $("pendingBanner").innerHTML = `<div class="banner warn">📦 ${items.length} recording${items.length > 1 ? "s" : ""} on this phone haven't been uploaded yet. <div class="row" style="margin-top:8px"><button class="btn" id="sendPending">Upload now</button></div></div>`;
+  $("sendPending").onclick = async () => { banner($("pendingBanner"), ""); for (const it of items) await upload(it); };
+}
+
+$("pickLink").onclick = e => { e.preventDefault(); if (!ready()) { go("vSet"); return; } $("filePick").click(); };
+$("filePick").onchange = async () => {
+  const f = $("filePick").files[0]; $("filePick").value = ""; if (!f) return;
+  const m = /\.([a-z0-9]{2,4})$/i.exec(f.name);
+  const item = { stem:stamp(new Date(f.lastModified || Date.now())), ext:m ? m[1].toLowerCase() : extFor(f.type), blob:f, seconds:0, saved:Date.now() };
+  await DB.put(item); upload(item);
 };
 
-// ---------- notes ----------
-let current = null;
-async function loadNotes() {
-  show($("noteView"), false); show($("noteList").parentElement, true);
-  if (!ready()) { $("noteList").innerHTML = '<p class="hint">Do Setup first (⚙️ at the top).</p>'; return; }
-  $("noteList").innerHTML = '<p class="hint">Loading…</p>'; $("pending").innerHTML = "";
+// live waveform
+function startMeter(s) {
   try {
-    const inbox = await gh("/contents/inbox").catch(e => e.status === 404 ? [] : Promise.reject(e));
-    const waiting = inbox.filter(f => /\.(webm|m4a|mp4|mp3|wav|ogg|oga|opus|aac|flac|3gp|amr|mov)$/i.test(f.name));
-    const errors = inbox.filter(f => /\.error\.txt$/i.test(f.name));
-    if (waiting.length) msg($("pending"), `⏳ ${waiting.length} recording(s) waiting to be transcribed` + (errors.length ? ` — ${errors.length} failed, see the inbox folder on GitHub.` : "."), errors.length ? "err" : "info");
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    const an = actx.createAnalyser(); an.fftSize = 1024;
+    actx.createMediaStreamSource(s).connect(an);
+    const buf = new Uint8Array(an.fftSize); let last = 0;
+    const loop = t => {
+      if (!actx) return;
+      if (t - last > 70) { last = t; an.getByteTimeDomainData(buf); let sum = 0; for (const v of buf) sum += (v - 128) ** 2;
+        levels.push(rec && rec.state === "paused" ? 0 : Math.min(1, Math.sqrt(sum / buf.length) / 40)); if (levels.length > 400) levels.shift(); drawWave(); }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
   } catch (e) {}
-  let idx;
-  try { idx = JSON.parse(await gh("/contents/index.json", { raw:true })); }
-  catch (e) { $("noteList").innerHTML = ""; if (e.status === 404) return msg($("noteList"), "No meetings yet. Record one!"); return msg($("noteList"), e.message, "err"); }
-  $("noteList").innerHTML = "";
-  if (!idx.notes.length) return msg($("noteList"), "No meetings yet. Record one!");
-  for (const n of idx.notes) {
-    const d = document.createElement("div"); d.className = "note";
-    const b = document.createElement("b"); b.textContent = n.title; d.appendChild(b);
-    if (n.unnamed_speakers && n.unnamed_speakers.length) { const s = document.createElement("span"); s.className = "badge"; s.textContent = "name speakers"; b.appendChild(s); }
-    const sm = document.createElement("small"); sm.textContent = `${n.date} ${n.time} · ${n.duration_min} min` + (n.topic ? ` · ${n.topic}` : "") + (n.people.length ? ` · ${n.people.join(", ")}` : ""); d.appendChild(sm);
-    d.onclick = () => openNote(n);
-    $("noteList").appendChild(d);
+}
+function drawWave(clear) {
+  const c = $("wave"), dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== w * dpr) { c.width = w * dpr; c.height = h * dpr; }
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const step = 6, n = Math.floor(w / step), data = clear ? [] : levels.slice(-n);
+  for (let i = 0; i < n; i++) {
+    const v = data[i - (n - data.length)] ?? 0, bh = Math.max(3, v * (h - 6));
+    g.fillStyle = i >= n - data.length ? "rgba(255,110,125,.9)" : "rgba(147,165,184,.25)";
+    g.beginPath(); g.roundRect ? g.roundRect(i * step, (h - bh) / 2, 3, bh, 2) : g.rect(i * step, (h - bh) / 2, 3, bh); g.fill();
   }
 }
-$("refreshBtn").onclick = loadNotes;
-$("backBtn").onclick = loadNotes;
 
-async function openNote(n) {
-  show($("noteList").parentElement, false); show($("noteView"), true); msg($("nvMsg"), "Loading…");
-  $("nvSpeakers").innerHTML = ""; $("nvSummary").textContent = "";
-  try {
-    const metaFile = await gh(`/contents/${n.path}/meta.json`);
-    const meta = JSON.parse(textFromB64(metaFile.content));
-    const tr = JSON.parse(await gh(`/contents/${n.path}/transcript.json`, { raw:true }));
-    current = { path:n.path, sha:metaFile.sha, meta };
-    $("nvTitle").textContent = meta.title;
-    $("nvFacts").textContent = `${meta.date} ${meta.time} · ${Math.round((meta.duration_sec || 0) / 60)} min`;
-    $("nvSummary").textContent = tr.summary || "(no summary)";
-    $("nvTitleIn").value = meta.title || ""; $("nvTopic").value = meta.topic || "";
-    $("nvTags").value = (meta.tags || []).join(", "); $("nvPeople").value = (meta.participants || []).join(", ");
-    for (const lab of Object.keys(meta.speakers || {})) {
-      const said = tr.utterances.filter(u => u.speaker === lab);
-      const first = said.find(u => u.text.split(" ").length > 4) || said[0];
-      const l = document.createElement("label"); l.textContent = `Speaker ${lab} (${said.length} turns)`;
-      const s = document.createElement("div"); s.className = "sample"; s.textContent = first ? `“${first.text.slice(0, 160)}”` : "";
-      const i = document.createElement("input"); i.dataset.label = lab; i.value = meta.speakers[lab] || ""; i.placeholder = "Real name";
-      $("nvSpeakers").append(l, s, i);
-    }
-    const c = cfg(); $("nvOpen").href = `https://github.com/${c.owner}/${c.repo}/blob/HEAD/${n.path}/README.md`;
-    msg($("nvMsg"), "");
-  } catch (e) { msg($("nvMsg"), e.message, "err"); }
+// ---------------- meetings list ----------------
+let index = [];
+async function loadList() {
+  if (!ready()) { $("list").innerHTML = `<div class="empty">Connect to your notes first.<br><br><button class="btn" id="goSet">Open Settings</button></div>`; $("goSet").onclick = () => go("vSet"); return; }
+  $("list").innerHTML = `<div class="empty">Loading…</div>`; banner($("waiting"), "");
+  gh("/contents/inbox").then(files => {
+    const w = files.filter(f => /\.(webm|m4a|mp4|mp3|wav|ogg|oga|opus|aac|flac|3gp|amr|mov)$/i.test(f.name)).length;
+    const bad = files.filter(f => /\.error\.txt$/i.test(f.name)).length;
+    if (bad) banner($("waiting"), `⚠️ ${bad} recording(s) couldn't be processed. Ask whoever set this up to check the "Actions" tab on GitHub.`, "err");
+    else if (w) banner($("waiting"), `⏳ ${w} recording(s) being processed. Usually ready in a few minutes; tap ↻ to check.`, "info");
+  }).catch(() => {});
+  try { index = JSON.parse(await gh("/contents/index.json", { raw:true })).notes || []; }
+  catch (e) { index = []; if (e.status !== 404) return banner($("list"), e.message, "err"); }
+  $("countLine").textContent = index.length ? `${index.length} meeting${index.length > 1 ? "s" : ""}` : "";
+  renderList();
 }
-$("nvSave").onclick = async () => {
-  if (!current) return;
-  const m = current.meta;
-  m.title = $("nvTitleIn").value.trim() || m.title; m.topic = $("nvTopic").value.trim();
-  m.tags = list($("nvTags").value); m.participants = list($("nvPeople").value);
-  for (const i of $("nvSpeakers").querySelectorAll("input")) m.speakers[i.dataset.label] = i.value.trim();
-  msg($("nvMsg"), "Saving…");
-  try {
-    const r = await gh(`/contents/${current.path}/meta.json`, { method:"PUT", body:JSON.stringify({ message:`Names/tags: ${m.title}`, content:b64FromText(JSON.stringify(m, null, 2) + "\n"), sha:current.sha }) });
-    current.sha = r.content.sha;
-    msg($("nvMsg"), "✅ Saved. The transcript and index update with the new names in a minute or two.", "ok");
-  } catch (e) { msg($("nvMsg"), "❌ " + e.message + (e.status === 409 ? "\nThe note changed meanwhile. Go back and open it again." : ""), "err"); }
-};
+function renderList() {
+  const q = $("q").value.trim().toLowerCase();
+  const rows = index.filter(n => !q || [n.title, n.topic, (n.people || []).join(" "), (n.tags || []).join(" "), n.summary_first_line].join(" ").toLowerCase().includes(q));
+  if (!index.length) { $("list").innerHTML = `<div class="empty">No meetings yet.<br>Record one and it will show up here.</div>`; return; }
+  if (!rows.length) { $("list").innerHTML = `<div class="empty">Nothing matches “${esc(q)}”.</div>`; return; }
+  $("list").innerHTML = rows.map((n, i) => {
+    const d = new Date(n.date + "T" + (n.time || "00:00"));
+    const when = isNaN(d) ? n.date : d.toLocaleDateString(undefined, { weekday:"short", month:"short", day:"numeric" }) + " · " + d.toLocaleTimeString(undefined, { hour:"numeric", minute:"2-digit" });
+    const len = n.duration_min >= 1 ? `${Math.round(n.duration_min)} min` : "under 1 min";
+    const chips = [n.topic ? `<span class="chip">${esc(n.topic)}</span>` : "", n.speaker_count ? `<span class="chip">👥 ${n.speaker_count}</span>` : "",
+                   (n.unnamed_speakers || []).length ? `<span class="chip warn">name voices</span>` : ""].join("");
+    return `<div class="note" data-i="${index.indexOf(n)}"><div class="t">${esc(n.title)}</div><div class="m">${esc(when)} · ${len}${(n.people || []).length ? " · " + esc(n.people.join(", ")) : ""}</div>
+      ${n.summary_first_line ? `<div class="s">${esc(n.summary_first_line)}</div>` : ""}<div class="chips">${chips}</div></div>`;
+  }).join("");
+  $("list").querySelectorAll(".note").forEach(el => el.onclick = () => openNote(index[+el.dataset.i]));
+}
+$("q").oninput = renderList;
+$("refreshBtn").onclick = loadList;
+$("backBtn").onclick = () => go("vNotes");
 
-// first visit: go to setup
-if (!ready()) $("gear").onclick();
+// ---------------- one meeting ----------------
+let cur = null, wantCount = 2;
+function groups(meta, labels) {   // same idea as the server: AI says some labels are one person
+  const user = meta.speakers || {}, canon = {};
+  for (const g0 of (meta.ai && meta.ai.speaker_merges) || []) {
+    const g = g0.filter(l => labels.includes(l));
+    for (const l of g.slice(1)) if (!(user[l] && user[g[0]] && user[l] !== user[g[0]])) canon[l] = g[0];
+  }
+  const out = {};
+  for (const l of labels) { const c = canon[l] || l; (out[c] = out[c] || []).push(l); }
+  return out;
+}
+async function openNote(n) {
+  go("vNote");
+  ["dTitle", "dFacts", "dSummary"].forEach(id => $(id).textContent = "");
+  $("dChips").innerHTML = $("dActions").innerHTML = $("dSpeakers").innerHTML = ""; banner($("dMsg"), ""); banner($("dMsgTop"), "Loading…");
+  try {
+    const mf = await gh(`/contents/${n.path}/meta.json`);
+    const meta = JSON.parse(textFromB64(mf.content));
+    const tr = JSON.parse(await gh(`/contents/${n.path}/transcript.json`, { raw:true }));
+    cur = { path:n.path, sha:mf.sha, meta, tr };
+    const ai = meta.ai || {};
+    $("dTitle").textContent = n.title;
+    $("dFacts").textContent = `${n.date} ${n.time} · ${Math.max(1, Math.round((meta.duration_sec || 0) / 60))} min`;
+    $("dChips").innerHTML = [n.topic && `<span class="chip">${esc(n.topic)}</span>`, ...(n.tags || []).map(t => `<span class="chip">#${esc(t)}</span>`)].filter(Boolean).join("");
+    const sum = (ai.summary || tr.summary || "No summary yet.").trim();
+    const bl = sum.split("\n").filter(l => l.trim());
+    if (bl.length > 1 && bl.every(l => /^\s*[-*•]\s+/.test(l)))
+      $("dSummary").innerHTML = `<ul class="clean">${bl.map(l => `<li>${esc(l.replace(/^\s*[-*•]\s+/, "").replace(/\*\*/g, ""))}</li>`).join("")}</ul>`;
+    else $("dSummary").textContent = sum;
+    const acts = ai.action_items || [], decs = ai.decisions || [];
+    $("dActions").innerHTML = (acts.length ? `<h3 style="margin-top:14px">Action items</h3><ul class="clean">${acts.map(a => `<li>${esc(a)}</li>`).join("")}</ul>` : "") +
+                              (decs.length ? `<h3 style="margin-top:14px">Decisions</h3><ul class="clean">${decs.map(a => `<li>${esc(a)}</li>`).join("")}</ul>` : "");
+    banner($("dMsgTop"), meta.fix_speaker_count ? `⏳ Re-checking for ${meta.fix_speaker_count} speaker(s)… come back in a few minutes.` : (ai.error ? "The AI step had a problem; names and summary may be missing." : ""), meta.fix_speaker_count ? "info" : "warn");
+    if (meta.fix_speaker_note) banner($("dMsgTop"), meta.fix_speaker_note, "warn");
+
+    const labels = [...new Set(tr.utterances.map(u => u.speaker))];
+    const gs = groups(meta, labels);
+    $("dSpeakers").innerHTML = "";
+    for (const [c, labs] of Object.entries(gs)) {
+      const said = tr.utterances.filter(u => labs.includes(u.speaker));
+      const first = said.find(u => u.text.split(" ").length > 5) || said[0];
+      const user = labs.map(l => (meta.speakers || {})[l]).find(Boolean) || "";
+      const sug = (ai.speaker_names || {})[c] || labs.map(l => (ai.speaker_names || {})[l]).find(Boolean);
+      const div = document.createElement("div"); div.className = "spk";
+      div.innerHTML = `<div class="lab">Voice ${esc(c)}${labs.length > 1 ? ` <span class="chip ai">AI: same person as ${esc(labs.slice(1).join(", "))}</span>` : ""} · ${said.length} time${said.length > 1 ? "s" : ""}</div>
+        <div class="quote">${first ? "“" + esc(first.text.slice(0, 180)) + (first.text.length > 180 ? "…" : "") + "”" : ""}</div>
+        <input placeholder="Name (optional)" value="${esc(user)}">`;
+      const inp = div.querySelector("input"); inp.dataset.labels = labs.join(",");
+      if (sug && !user) {
+        const b = document.createElement("div"); b.className = "sugg";
+        b.innerHTML = `✨ ${esc(sug.name)}? <span class="tiny">(${esc(sug.confidence)}) tap to use</span>`; b.title = sug.why || "";
+        b.onclick = () => { inp.value = sug.name; b.remove(); };
+        div.appendChild(b);
+      }
+      $("dSpeakers").appendChild(div);
+    }
+    wantCount = ai.speaker_count || Object.keys(gs).length || 1; $("cVal").textContent = wantCount;
+    $("fixBox").open = false;
+    $("dContext").value = meta.context || "";
+    $("dTitleIn").value = meta.title || ""; $("dTitleIn").placeholder = ai.title || "Title";
+    $("dTopic").value = meta.topic || ""; $("dTopic").placeholder = ai.topic || "Topic";
+    $("dPeople").value = (meta.participants || []).join(", ");
+    $("dTags").value = (meta.tags || []).join(", "); $("dTags").placeholder = (ai.tags || []).join(", ") || "e.g. schedule, budget";
+    const a = $("dAudio"); if (a.src) { URL.revokeObjectURL(a.src); a.removeAttribute("src"); } show(a, false);
+    show($("audioCard"), !!meta.audio); show($("playBtn"), true); $("audioNote").textContent = "The original audio is kept with this meeting.";
+    $("playBtn").onclick = async () => {
+      $("playBtn").disabled = true; $("audioNote").textContent = "Loading audio…";
+      try { const b = await gh(`/contents/${n.path}/${meta.audio}`, { blob:true }); const ext = meta.audio.split(".").pop().toLowerCase();
+            const mime = { webm:"audio/webm", m4a:"audio/mp4", mp4:"audio/mp4", mp3:"audio/mpeg", wav:"audio/wav", ogg:"audio/ogg" }[ext] || b.type;
+            a.src = URL.createObjectURL(new Blob([b], { type:mime })); show(a, true); show($("playBtn"), false);
+            $("audioNote").textContent = "The original audio is kept with this meeting."; a.play().catch(() => {}); }
+      catch (e) { $("audioNote").textContent = e.message; }
+      $("playBtn").disabled = false;
+    };
+    const c = cfg(); $("dOpen").href = `https://github.com/${c.owner}/${c.repo}/blob/HEAD/${n.path}/README.md`;
+    if (!meta.fix_speaker_count && !meta.fix_speaker_note && !ai.error) banner($("dMsgTop"), "");
+  } catch (e) { banner($("dMsgTop"), e.message, "err"); }
+}
+$("cMinus").onclick = () => { wantCount = Math.max(1, wantCount - 1); $("cVal").textContent = wantCount; };
+$("cPlus").onclick = () => { wantCount = Math.min(20, wantCount + 1); $("cVal").textContent = wantCount; };
+async function saveMeta(mutate, okText) {
+  if (!cur) return;
+  const m = JSON.parse(JSON.stringify(cur.meta)); mutate(m);
+  banner($("dMsg"), "Saving…");
+  try {
+    const r = await gh(`/contents/${cur.path}/meta.json`, { method:"PUT", body:JSON.stringify({ message:`Details: ${m.title || m.id}`, content:b64FromText(JSON.stringify(m, null, 2) + "\n"), sha:cur.sha }) });
+    cur.sha = r.content.sha; cur.meta = m;
+    banner($("dMsg"), okText, "ok");
+  } catch (e) { banner($("dMsg"), "❌ " + e.message, "err"); }
+}
+$("saveBtn").onclick = () => saveMeta(m => {
+  m.context = $("dContext").value.trim(); m.title = $("dTitleIn").value.trim(); m.topic = $("dTopic").value.trim();
+  m.participants = list($("dPeople").value); m.tags = list($("dTags").value);
+  m.speakers = m.speakers || {};
+  for (const inp of $("dSpeakers").querySelectorAll("input")) for (const l of inp.dataset.labels.split(",")) m.speakers[l] = inp.value.trim();
+}, "✅ Saved. The AI is updating this meeting with your details. Check back in a minute or two.");
+$("fixBtn").onclick = () => saveMeta(m => { m.fix_speaker_count = wantCount; },
+  `✅ Got it. The recording is being re-checked for ${wantCount} speaker${wantCount > 1 ? "s" : ""}. This takes a few minutes; names you typed will need re-doing.`);
+
+// ---------------- start ----------------
+setWho(); drawWave(true); checkPending();
+if (!ready()) go("vSet");
+window.addEventListener("resize", () => drawWave(!rec));
 </script>
 </body>
 </html>
